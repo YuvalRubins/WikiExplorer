@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Run Python with Prints</title>
+  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+  <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #e0eafc, #cfdef3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-size: 1.6rem;
+      color: #333;
+    }
+
+    input {
+      margin: 10px;
+      padding: 12px;
+      width: 200px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      outline: none;
+      font-size: 1rem;
+      transition: 0.3s;
+    }
+
+    input:focus {
+      border-color: #4a90e2;
+      box-shadow: 0 0 6px rgba(74, 144, 226, 0.3);
+    }
+
+    button {
+      padding: 12px 24px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #4a90e2;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    button:hover {
+      background: #357ABD;
+      transform: translateY(-2px);
+    }
+
+    #output {
+      margin-top: 25px;
+      padding: 15px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      min-height: 80px;
+      text-align: left;
+      font-family: monospace;
+      white-space: pre-wrap; /* keeps newlines from print() */
+      color: #222;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Wiki path finder</h1>
+
+    <input id="start_page" placeholder="Enter start page">
+    <input id="end_page" placeholder="Enter end page"><br>
+    <button id="run-btn">Find Path!</button>
+
+    <div id="output">Output will appear here...</div>
+  </div>
+
+  <!-- Fetch utils.py -->
+  <py-config>
+    [[fetch]]
+    files = ["./WikiExplorer.py"]
+  </py-config>
+
+  <py-script>
+from js import document
+import sys, io
+from WikiExplorer import search_path_on_wikipedia
+
+def run_code(event):
+    start_page = document.getElementById("start_page").value
+    end_page = document.getElementById("end_page").value
+    output_div = document.getElementById("output")
+
+    if not (start_page and end_page):
+        output_div.innerText = "⚠️ Please fill in both boxes!"
+        return
+
+    # Capture print() output
+    buffer = io.StringIO()
+    sys.stdout = buffer
+    try:
+        result = search_path_on_wikipedia(start_page, end_page)
+    finally:
+        sys.stdout = sys.__stdout__
+
+    printed_text = buffer.getvalue()
+    output_div.innerText = printed_text + f"\nReturned: {result}"
+
+btn = document.getElementById("run-btn")
+btn.addEventListener("click", run_code)
+  </py-script>
+</body>
+</html>
