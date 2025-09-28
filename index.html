@@ -78,6 +78,8 @@
       color: #222;
     }
   </style>
+  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+  <script type="module" src="https://pyscript.net/latest/pyscript.js"></script>
 </head>
 <body>
   <div class="container">
@@ -97,32 +99,32 @@
   </py-config>
 
   <py-script>
-from js import document
-import sys, io
-from WikiExplorer import search_path_on_wikipedia
+  from js import document
+  import sys, io
+  from WikiExplorer import search_path_on_wikipedia
 
-def run_code(event):
-    start_page = document.getElementById("start_page").value
-    end_page = document.getElementById("end_page").value
-    output_div = document.getElementById("output")
+  def run_code(event):
+      start_page = document.getElementById("start_page").value
+      end_page = document.getElementById("end_page").value
+      output_div = document.getElementById("output")
 
-    if not (start_page and end_page):
-        output_div.innerText = "⚠️ Please fill in both boxes!"
-        return
+      if not (start_page and end_page):
+          output_div.innerText = "⚠️ Please fill in both boxes!"
+          return
 
-    # Capture print() output
-    buffer = io.StringIO()
-    sys.stdout = buffer
-    try:
-        result = search_path_on_wikipedia(start_page, end_page)
-    finally:
-        sys.stdout = sys.__stdout__
+      # Capture print() output
+      buffer = io.StringIO()
+      sys.stdout = buffer
+      try:
+          result = search_path_on_wikipedia(start_page, end_page)
+      finally:
+          sys.stdout = sys.__stdout__
 
-    printed_text = buffer.getvalue()
-    output_div.innerText = printed_text + f"\nReturned: {result}"
+      printed_text = buffer.getvalue()
+      output_div.innerText = printed_text + f"\nReturned: {result}"
 
-btn = document.getElementById("run-btn")
-btn.addEventListener("click", run_code)
+  btn = document.getElementById("run-btn")
+  btn.addEventListener("click", run_code)
   </py-script>
 </body>
 </html>
