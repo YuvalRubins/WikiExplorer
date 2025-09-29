@@ -23,6 +23,7 @@
 
   <script>
     const output = document.getElementById("output");
+    const app_url = "http://pyr8s8-ip-192-114-23-207.tunnelmole.net"
 
     document.getElementById("run-btn").addEventListener("click", () => {
       const start = encodeURIComponent(document.getElementById("start_page").value);
@@ -31,7 +32,7 @@
       if(!start || !end) { output.innerText = "⚠️ Fill both boxes!"; return; }
 
       output.innerText = "";
-      evtSource = new EventSource(`http://127.0.0.1:5000/run?start=${start}&end=${end}`);
+      evtSource = new EventSource(`${app_url}/run?start=${start}&end=${end}`);
 
       evtSource.onmessage = (e) => {
         output.innerText += e.data + "\n";
