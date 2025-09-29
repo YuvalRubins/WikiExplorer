@@ -6,6 +6,12 @@ app = Flask(__name__)
 CORS(app)
 proc = None
 
+
+@app.route("/")
+def welcome():
+    return "<h1>Welcome to Wiki Explorer backend!</h1><p>Send request: /run?start=<start>&end=<end> to start search</p>"
+
+
 @app.route("/run")
 def run():
     start = request.args.get("start")
@@ -35,5 +41,5 @@ def run():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, threaded=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=5000, threaded=True, debug=True)
 
