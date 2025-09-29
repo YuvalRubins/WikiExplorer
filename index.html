@@ -1,130 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Run Python with Prints</title>
-  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
-  <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+  <title>Wiki Path Finder</title>
+  <link rel="icon" type="image/png" href="favicon.png">
   <style>
-    body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #e0eafc, #cfdef3);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .container {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-      max-width: 500px;
-      width: 100%;
-      text-align: center;
-    }
-
-    h1 {
-      margin-bottom: 20px;
-      font-size: 1.6rem;
-      color: #333;
-    }
-
-    input {
-      margin: 10px;
-      padding: 12px;
-      width: 200px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      outline: none;
-      font-size: 1rem;
-      transition: 0.3s;
-    }
-
-    input:focus {
-      border-color: #4a90e2;
-      box-shadow: 0 0 6px rgba(74, 144, 226, 0.3);
-    }
-
-    button {
-      padding: 12px 24px;
-      margin-top: 10px;
-      border: none;
-      border-radius: 8px;
-      background: #4a90e2;
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.3s, transform 0.2s;
-    }
-
-    button:hover {
-      background: #357ABD;
-      transform: translateY(-2px);
-    }
-
-    #output {
-      margin-top: 25px;
-      padding: 15px;
-      background: #f9f9f9;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      min-height: 80px;
-      text-align: left;
-      font-family: monospace;
-      white-space: pre-wrap; /* keeps newlines from print() */
-      color: #222;
-    }
+    body { font-family: sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; background:#eef; }
+    .container { background:white; padding:20px; border-radius:12px; width:1000px; text-align:center; box-shadow:0 5px 20px rgba(0,0,0,0.2);}
+    input { padding:8px; margin:5px; width:150px; }
+    button { padding:8px 15px; margin-top:10px; cursor:pointer; }
+    #output { margin-top:15px; padding:10px; background:#f9f9f9; height:200px; overflow:auto; text-align:left; white-space:pre-wrap; font-family:monospace;}
   </style>
-  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
-  <script type="module" src="https://pyscript.net/latest/pyscript.js"></script>
 </head>
 <body>
   <div class="container">
-    <h1>Wiki path finder</h1>
-
-    <input id="start_page" placeholder="Enter start page">
-    <input id="end_page" placeholder="Enter end page"><br>
-    <button id="run-btn">Find Path!</button>
-
-    <div id="output">Output will appear here...</div>
+    <h2>Wiki Path Finder</h2>
+    <input id="start_page" placeholder="Start page">
+    <input id="end_page" placeholder="End page"><br>
+    <button id="run-btn" type="button">Find Path!</button>
+    <div id="output">Logs will appear here...</div>
   </div>
 
-  <!-- Fetch utils.py -->
-  <py-config>
-    [[fetch]]
-    files = ["./WikiExplorer.py"]
-  </py-config>
+  <script>
+    const output = document.getElementById("output");
 
-  <py-script>
-  from js import document
-  import sys, io
-  from WikiExplorer import search_path_on_wikipedia
+    document.getElementById("run-btn").addEventListener("click", () => {
+      const start = encodeURIComponent(document.getElementById("start_page").value);
+      const end = encodeURIComponent(document.getElementById("end_page").value);
 
-  def run_code(event):
-      start_page = document.getElementById("start_page").value
-      end_page = document.getElementById("end_page").value
-      output_div = document.getElementById("output")
+      if(!start || !end) { output.innerText = "⚠️ Fill both boxes!"; return; }
 
-      if not (start_page and end_page):
-          output_div.innerText = "⚠️ Please fill in both boxes!"
-          return
+      output.innerText = "";
+      evtSource = new EventSource(`http://127.0.0.1:5000/run?start=${start}&end=${end}`);
 
-      # Capture print() output
-      buffer = io.StringIO()
-      sys.stdout = buffer
-      try:
-          result = search_path_on_wikipedia(start_page, end_page)
-      finally:
-          sys.stdout = sys.__stdout__
+      evtSource.onmessage = (e) => {
+        output.innerText += e.data + "\n";
+        output.scrollTop = output.scrollHeight; // auto-scroll
+      };
 
-      printed_text = buffer.getvalue()
-      output_div.innerText = printed_text + f"\nReturned: {result}"
+      evtSource.onerror = (e) => {
+        // output.innerText += "\n❌ Connection error\n" + e + "\n" + e.data;
+        evtSource.close();
+      };
+    });
 
-  btn = document.getElementById("run-btn")
-  btn.addEventListener("click", run_code)
-  </py-script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("run-btn");
+    const startInput = document.getElementById("start_page");
+    const endInput = document.getElementById("end_page");
+
+    // Reuse your existing run function
+    function runCode() {
+      btn.click(); // trigger the button click
+    }
+
+    // Listen for Enter on both inputs
+    startInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        runCode();
+      }
+    });
+
+    endInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") {
+        runCode();
+      }
+    });
+  });
+  </script>
 </body>
 </html>

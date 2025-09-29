@@ -8,9 +8,13 @@ import argparse
 import spacy
 nlp = spacy.load("en_core_web_lg")
 
+i = 0
+
 
 def print_path_of_pages(pages):
-    print(" -> ".join(pages))
+    global i
+    print(f"{i:3}) " + " -> ".join(pages))
+    i += 1
 
 
 def search_path(start, end, get_neighbors: callable, get_node_rank: callable):
@@ -41,7 +45,6 @@ class NotWikiPage(Exception):
     pass
 
 
-# @dataclass
 class Page:
     URL_PAGE_HEADER = "https://en.wikipedia.org/wiki/"
 
