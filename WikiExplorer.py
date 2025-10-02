@@ -5,40 +5,96 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import argparse
+import colorama
 import spacy
 nlp = spacy.load("en_core_web_lg")
-
-i = 0
-
-
-def print_path_of_pages(pages):
-    global i
-    print(f"{i:3}) " + " -> ".join(pages))
-    i += 1
+colorama.init(autoreset=True)
 
 
-def search_path(start, end, get_neighbors: callable, get_node_rank: callable):
-    graph = nx.DiGraph()
-    current_nodes = [(get_node_rank(start), start)]
-    heapq.heapify(current_nodes)
-    graph.add_node(start)
-    seen_nodes = set([start])
+class WikiExplorer:
+    TOO_FAR_RANK = -0.4
+    RETRACTION_PERIOD = 10
+    def __init__(self, start_page_name: str, end_page_name: str, get_neighbors: callable, get_node_rank: callable):
+        self.start_page = start_page_name
+        self.end_page = end_page_name
+        self.target_page = end_page_name
+        self.get_neighbors = get_neighbors
+        self.get_node_rank = get_node_rank
+        self.explored_graph = nx.DiGraph()
 
-    while current_nodes:
-        _, node = heapq.heappop(current_nodes)
-        print_path_of_pages(nx.shortest_path(graph, start, node))
-        # print(f"Page rank: {get_node_rank(node)}")
-        neighbors = set(get_neighbors(node))
-        new_neighbors = neighbors.difference(seen_nodes)
-        seen_nodes.update(new_neighbors)
-        new_neighbors_with_ranks = [(get_node_rank(neighbor), neighbor) for neighbor in new_neighbors]
-        heapq.heapify(new_neighbors_with_ranks)
-        current_nodes = list(heapq.merge(current_nodes, new_neighbors_with_ranks))
-        graph.add_nodes_from(new_neighbors)
-        graph.add_edges_from([(node, neighbor) for neighbor in neighbors])
+    def get_page_rank(self, page, dest_page=None):
+        """
+        Smaller - more similar
+        """
+        dest_page = dest_page or self.target_page
+        return -get_nlp_similarity(page, dest_page) - len(Page(page).sub_pages) / 10_000
 
-        if end in seen_nodes:
-            return nx.shortest_path(graph, start, end)
+    def print_current_path(self, page):
+        begin_path = nx.shortest_path(self.explored_graph, self.start_page, page)
+        end_path = nx.shortest_path(self.explored_graph, self.target_page, self.end_page)
+        print(f"{self.search_number:3}) " +
+              colorama.Fore.GREEN + " -> ".join(begin_path) +
+              colorama.Style.RESET_ALL + "   ===>   " +
+              colorama.Fore.RED + " -> ".join(end_path))
+
+    def search_path(self):
+        self.current_nodes = [[self.get_page_rank(self.start_page), self.start_page]]
+        heapq.heapify(self.current_nodes)
+        self.explored_graph.add_nodes_from([self.start_page, self.end_page])
+        explored_nodes = set([self.start_page])
+        seen_targets = set([self.end_page])
+        self.search_number = 0
+
+        while self.current_nodes:
+            page_rank, closest_node = self.current_nodes[0]
+            self.print_current_path(closest_node)
+            print(f"Page rank: {page_rank}")
+
+            if (page_rank > self.TOO_FAR_RANK or self.search_number % self.RETRACTION_PERIOD == 0) and \
+               self.search_number % (self.RETRACTION_PERIOD+1) != 0:
+                best_rank = float("inf")
+                for bi_neighbor_page in Page(self.target_page).bidirectional_links_iterator:
+                    bi_neighbor = bi_neighbor_page.name
+                    # if bi_neighbor in seen_targets:
+                    #     continue
+
+                    self.explored_graph.add_edge(bi_neighbor, self.target_page)
+                    self.explored_graph.add_edge(self.target_page, bi_neighbor)
+                    bi_neighbor_rank = self.get_page_rank(bi_neighbor, closest_node)
+                    if bi_neighbor_rank < self.TOO_FAR_RANK:
+                        best_bi_neighbor = bi_neighbor
+                        break
+
+                    if best_rank > bi_neighbor_rank:
+                        best_rank = bi_neighbor_rank
+                        best_bi_neighbor = bi_neighbor
+
+                self.target_page = best_bi_neighbor
+                seen_targets.add(self.target_page)
+                for node in self.current_nodes:
+                    node[0] = self.get_page_rank(node[1])
+                heapq.heapify(self.current_nodes)
+                if nx.has_path(self.explored_graph, self.start_page, self.end_page):
+                    break
+
+            else:
+                heapq.heappop(self.current_nodes)
+                neighbors = set(self.get_neighbors(closest_node))
+                new_neighbors = neighbors.difference(explored_nodes)
+                explored_nodes.update(new_neighbors)
+                new_neighbors_with_ranks = [[self.get_page_rank(neighbor), neighbor] for neighbor in new_neighbors]
+                heapq.heapify(new_neighbors_with_ranks)
+                self.current_nodes = list(heapq.merge(self.current_nodes, new_neighbors_with_ranks))
+                self.explored_graph.add_nodes_from(new_neighbors)
+                self.explored_graph.add_edges_from([(closest_node, neighbor) for neighbor in neighbors])
+                if self.target_page in explored_nodes:
+                    break
+
+            self.search_number += 1
+
+        path = nx.shortest_path(self.explored_graph, self.start_page, self.end_page)
+        print("Found path: " + " -> ".join(path))
+        return path
 
 
 class NotWikiPage(Exception):
@@ -103,6 +159,29 @@ class Page:
         return sub_pages
 
     @cached_property
+    def bidirectional_links_iterator(self):
+        class BidirectionalLinksIterator:
+            def __init__(self, page):
+                self.page = page
+
+            def __iter__(self):
+                self.linker_iterator = iter(self.page.sub_pages)
+                return self
+
+            def __next__(self):
+                link = next(self.linker_iterator)
+                while self.page not in link.sub_pages or self.page is link:
+                    # print(f"checking {link}")
+                    link = next(self.linker_iterator)
+                print(f"found {link}")
+                return link
+
+
+        # bidirectional_links = set()
+
+        return BidirectionalLinksIterator(self)
+
+    @cached_property
     def url(self) -> str:
         return Page.name_to_url(self.name)
 
@@ -110,25 +189,33 @@ class Page:
     def rank(self) -> str:
         return len(self.sub_pages)
 
+    def __str__(self):
+        return self.name
+
     # def __lt__(self, other) -> bool:
     #     return self.rank > other.rank
 
 
+def normalize_text_for_nlp(text: str) -> str:
+    return text.lower().replace("_", " ")
+
+def get_nlp_similarity(text1, text2):
+    doc1 = nlp(normalize_text_for_nlp(text1))
+    doc2 = nlp(normalize_text_for_nlp(text2))
+    if not doc1.has_vector:
+        return 0
+    else:
+        return doc1.similarity(doc2)
+
+
 def search_path_on_wikipedia(start_page_name, end_page_name):
-    end_page_doc = nlp(end_page_name.replace("_", " "))
+    def rank_of_page(wiki_explorer, page_name):
+        return -get_nlp_similarity(page_name, wiki_explorer.target_page)
 
-    def rank_of_page(page_name):
-        current_page_doc = nlp(page_name.replace("_", " "))
-        if not current_page_doc.has_vector:
-            return 0
-        else:
-            return -end_page_doc.similarity(current_page_doc)
-
-    path = search_path(start_page_name,
-                       end_page_name,
-                       lambda page_name: [page.name for page in Page(page_name).sub_pages],
-                       rank_of_page)
-    print_path_of_pages(path)
+    WikiExplorer(start_page_name,
+                 end_page_name,
+                 lambda page_name: [page.name for page in Page(page_name).sub_pages],
+                 rank_of_page).search_path()
 
 
 def main():
