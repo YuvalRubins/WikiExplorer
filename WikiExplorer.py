@@ -12,8 +12,8 @@ colorama.init(autoreset=True)
 
 
 class WikiExplorer:
-    TOO_FAR_RANK = -0.4
-    RETRACTION_PERIOD = 10
+    TOO_FAR_RANK = -0.3
+    RETRACTION_PERIOD = 15
     def __init__(self, start_page_name: str, end_page_name: str, get_neighbors: callable, get_node_rank: callable):
         self.start_page = start_page_name
         self.end_page = end_page_name
@@ -27,7 +27,7 @@ class WikiExplorer:
         Smaller - more similar
         """
         dest_page = dest_page or self.target_page
-        return -get_nlp_similarity(page, dest_page) - len(Page(page).sub_pages) / 10_000
+        return -get_nlp_similarity(page, dest_page)
 
     def print_current_path(self, page):
         begin_path = nx.shortest_path(self.explored_graph, self.start_page, page)
@@ -43,37 +43,52 @@ class WikiExplorer:
         self.explored_graph.add_nodes_from([self.start_page, self.end_page])
         explored_nodes = set([self.start_page])
         seen_targets = set([self.end_page])
+        targets_heap = [[self.get_page_rank(self.end_page, self.start_page), self.end_page]]
+        heapq.heapify(targets_heap)
         self.search_number = 0
 
         while self.current_nodes:
             page_rank, closest_node = self.current_nodes[0]
             self.print_current_path(closest_node)
-            print(f"Page rank: {page_rank}")
+            # print(f"Page rank: {page_rank}")
 
             if (page_rank > self.TOO_FAR_RANK or self.search_number % self.RETRACTION_PERIOD == 0) and \
-               self.search_number % (self.RETRACTION_PERIOD+1) != 0:
-                best_rank = float("inf")
+               (self.search_number % (self.RETRACTION_PERIOD+1) != 0):
+                if self.search_number % (self.RETRACTION_PERIOD*4) == 0:
+                    closest_node = self.start_page
+
                 for bi_neighbor_page in Page(self.target_page).bidirectional_links_iterator:
                     bi_neighbor = bi_neighbor_page.name
-                    # if bi_neighbor in seen_targets:
-                    #     continue
 
                     self.explored_graph.add_edge(bi_neighbor, self.target_page)
                     self.explored_graph.add_edge(self.target_page, bi_neighbor)
-                    bi_neighbor_rank = self.get_page_rank(bi_neighbor, closest_node)
-                    if bi_neighbor_rank < self.TOO_FAR_RANK:
-                        best_bi_neighbor = bi_neighbor
+                    if bi_neighbor in seen_targets:
+                        continue
+                    else:
+                        seen_targets.add(bi_neighbor)
+
+                    bi_neighbor_rank = self.get_page_rank(bi_neighbor, closest_node) - len(bi_neighbor_page.sub_pages) / 10_000
+                    heapq.heappush(targets_heap, [bi_neighbor_rank, bi_neighbor])
+                    if targets_heap[0][1] != self.target_page:
                         break
 
-                    if best_rank > bi_neighbor_rank:
-                        best_rank = bi_neighbor_rank
-                        best_bi_neighbor = bi_neighbor
+                if self.target_page == targets_heap[0][1]:
+                    # print(f"{len(targets_heap)=}")
+                    for node in targets_heap:
+                        node[0] = self.get_page_rank(node[1], closest_node) - len(Page(node[1]).sub_pages) / 10_000
+                    heapq.heapify(targets_heap)
 
-                self.target_page = best_bi_neighbor
-                seen_targets.add(self.target_page)
-                for node in self.current_nodes:
-                    node[0] = self.get_page_rank(node[1])
-                heapq.heapify(self.current_nodes)
+                self.target_page = targets_heap[0][1]
+                # for node in self.current_nodes:
+                #     node[0] = self.get_page_rank(node[1])
+                # heapq.heapify(self.current_nodes)
+                shuffled_nodes = set()
+                while closest_node not in shuffled_nodes:
+                    _, closest_node = heapq.heappop(self.current_nodes)
+                    heapq.heappush(self.current_nodes, [self.get_page_rank(closest_node), closest_node])
+                    shuffled_nodes.add(closest_node)
+                    closest_node = self.current_nodes[0][1]
+
                 if nx.has_path(self.explored_graph, self.start_page, self.end_page):
                     break
 
@@ -173,7 +188,7 @@ class Page:
                 while self.page not in link.sub_pages or self.page is link:
                     # print(f"checking {link}")
                     link = next(self.linker_iterator)
-                print(f"found {link}")
+                # print(f"found {link}")
                 return link
 
 
@@ -197,7 +212,8 @@ class Page:
 
 
 def normalize_text_for_nlp(text: str) -> str:
-    return text.lower().replace("_", " ")
+    return text.lower().replace("_", " ").replace(",", " ").replace(".", " ")
+
 
 def get_nlp_similarity(text1, text2):
     doc1 = nlp(normalize_text_for_nlp(text1))
