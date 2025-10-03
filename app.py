@@ -25,7 +25,7 @@ def run():
 
         yield f"data: Search {start} to {end}\n\n"
         proc = subprocess.Popen(
-            ["python", "-u", "WikiExplorer.py", start, end],
+            ["python", "-u", "WikiExplorer.py", "-s", start, "-e", end],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
