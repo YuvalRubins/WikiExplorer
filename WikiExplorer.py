@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 import argparse
 import colorama
 import spacy
-nlp = spacy.load("en_core_web_lg")
+nlp = spacy.load("en_core_web_lg")  # python -m spacy download en_core_web_lg
 colorama.init(autoreset=True)
 args = None
 
@@ -109,7 +109,7 @@ class WikiExplorer:
                         Page(path[i+1]).incoming_pages.discard(path[i])
                         is_valid_path = False
                 if is_valid_path:
-                    print("Found path: " + " -> ".join(path))
+                    print("Found path" + f" (len={len(path)}): " + " -> ".join(path))
                     return path
         else:
             print("No path exists")
