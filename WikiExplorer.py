@@ -9,6 +9,7 @@ import colorama
 import spacy
 nlp = spacy.load("en_core_web_lg")
 colorama.init(autoreset=True)
+args = None
 
 
 class WikiExplorer:
@@ -133,6 +134,9 @@ def get_links_from_html(url):
     }
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.text, "html.parser")
+    if args.no_nav_boxes:
+        for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}):
+            nav_tag.decompose()
     return {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
 
 
@@ -247,9 +251,11 @@ def search_path_on_wikipedia(start_page_name, end_page_name):
 
 
 def main():
+    global args
     parser = argparse.ArgumentParser(description="Search a path from one Wikipedia page to another")
-    parser.add_argument("--start-page", '-s', type=str, help="Start page", default='*')
-    parser.add_argument("--end-page", '-e', type=str, help="Target page", default='*')
+    parser.add_argument("--start-page", '-s', type=str, help="Start page (takes a random page is not set)", default='*')
+    parser.add_argument("--end-page", '-e', type=str, help="Target page (takes a random page is not set)", default='*')
+    parser.add_argument("--no-nav-boxes", '-nn', help="Don't use links in navigation boxes", action="store_true")
 
     args = parser.parse_args()
 
