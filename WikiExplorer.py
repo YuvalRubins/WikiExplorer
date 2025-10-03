@@ -9,7 +9,6 @@ import colorama
 import spacy
 nlp = spacy.load("en_core_web_lg")  # python -m spacy download en_core_web_lg
 colorama.init(autoreset=True)
-args = None
 
 
 class WikiExplorer:
@@ -20,6 +19,7 @@ class WikiExplorer:
         self.start_page = start_page_name
         self.end_page = end_page_name
         self.explored_graph = nx.DiGraph()
+        self.search_number = 0
 
     def get_page_rank(self, page, dest_page):
         """
@@ -62,7 +62,6 @@ class WikiExplorer:
         targets_heap = [[self.get_page_rank(self.end_page, self.start_page), self.end_page, self.start_page]]
         seen_targets = set([self.end_page])
         self.explored_graph.add_nodes_from([self.start_page, self.end_page])
-        self.search_number = 0
         current_source = self.start_page
         current_target = self.end_page
 
@@ -143,28 +142,25 @@ class WikiExplorer:
                 raise
 
 
-def get_links_from_html(url):
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/122.0 Safari/537.36"
-        )
-    }
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, "html.parser")
-    if args.no_nav_boxes:
-        for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}):
-            nav_tag.decompose()
-    return {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
-
-
 class NotWikiPage(Exception):
     pass
 
 
 class Page:
     URL_PAGE_HEADER = "https://en.wikipedia.org/wiki/"
+    NO_NAV_BOXES = False
+    _pages = {}
+
+    def __new__(cls, name):
+        if name in cls._pages:
+            return cls._pages[name]
+        else:
+            page = super().__new__(cls)
+            cls._pages[name] = page
+            return page
+
+    def __init__(self, name: str):
+        self.name = name
 
     @staticmethod
     def name_to_url(name: str) -> str:
@@ -174,7 +170,7 @@ class Page:
     def is_url_of_wiki_page(url: str) -> bool:
         name = url.split('/')[-1]
         return url.startswith(Page.URL_PAGE_HEADER) and url.count('/') == Page.URL_PAGE_HEADER.count('/') and \
-               ":" not in name and name != "Main_Page"
+                ":" not in name and name != "Main_Page"
 
     @staticmethod
     def url_to_name(url: str) -> str:
@@ -195,23 +191,26 @@ class Page:
         response = requests.get(f"{Page.URL_PAGE_HEADER}Special:Random", headers=headers)
         return Page.url_to_name(response.url)
 
-    _pages = {}
-
-    def __new__(cls, name):
-        if name in cls._pages:
-            return cls._pages[name]
-        else:
-            page = super().__new__(cls)
-            cls._pages[name] = page
-            return page
-
-    def __init__(self, name: str):
-        self.name = name
+    @staticmethod
+    def get_links_from_html(url):
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0 Safari/537.36"
+            )
+        }
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        if Page.NO_NAV_BOXES:
+            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}):
+                nav_tag.decompose()
+        return {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
 
     @staticmethod
     def get_wikipedia_pages_from_url(url):
         pages = set()
-        for link in get_links_from_html(url):
+        for link in Page.get_links_from_html(url):
             try:
                 name = Page.url_to_name(link)
                 pages.add(Page(name))
@@ -264,7 +263,6 @@ def search_path_on_wikipedia(start_page_name, end_page_name):
 
 
 def main():
-    global args
     parser = argparse.ArgumentParser(description="Search a path from one Wikipedia page to another")
     parser.add_argument("--start-page", '-s', type=str, help="Start page (takes a random page is not set)", default='*')
     parser.add_argument("--end-page", '-e', type=str, help="Target page (takes a random page is not set)", default='*')
@@ -276,6 +274,7 @@ def main():
         args.start_page = Page.get_random_page_name()
     if args.end_page == '*':
         args.end_page = Page.get_random_page_name()
+    Page.NO_NAV_BOXES = args.no_nav_boxes
 
     search_path_on_wikipedia(args.start_page, args.end_page)
 
