@@ -10,6 +10,7 @@ jobs:
   running_tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         shard: [
           1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
@@ -37,4 +38,4 @@ jobs:
       - run: python -m spacy download en_core_web_lg
 
       # Run only part of the test suite based on matrix.shard
-      - run: pytest --splits MAX_JOBS --group ${{ matrix.shard }}
+      - run: pytest --splits ${{ env.MAX_JOBS }} --group ${{ matrix.shard }}
