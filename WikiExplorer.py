@@ -13,18 +13,20 @@ args = None
 
 
 class WikiExplorer:
-    def __init__(self, start_page_name: str, end_page_name: str, get_neighbors: callable, get_node_rank: callable):
+    """
+    Wiki explorer for path finding between pages
+    """
+    def __init__(self, start_page_name: str, end_page_name: str):
         self.start_page = start_page_name
         self.end_page = end_page_name
-        self.get_neighbors = get_neighbors
-        self.get_node_rank = get_node_rank
         self.explored_graph = nx.DiGraph()
 
-    def get_page_rank(self, page, dest_page=None):
+    def get_page_rank(self, page, dest_page):
         """
-        Smaller - more similar
+        Compute rank of `page` in relation to `dest_page` as it is the page going towards to
+        (basically how similar is the current page to the dest page)
+        Smaller rank is a better rank
         """
-        dest_page = dest_page or self.target_page
         return -get_nlp_similarity(page, dest_page)
 
     def get_outgoing_neighbors(self, node):
@@ -32,6 +34,18 @@ class WikiExplorer:
 
     def get_incoming_neighbors(self, node):
         return {page.name for page in Page(node).incoming_pages}
+
+    def is_valid_source(self, node):
+        """
+        Is the node a valid source, i.e. is it connected to the start
+        """
+        return nx.has_path(self.explored_graph, self.start_page, node)
+
+    def is_valid_target(self, node):
+        """
+        Is the node a valid target, i.e. is it connected to the end
+        """
+        return nx.has_path(self.explored_graph, node, self.end_page)
 
     def print_current_path(self, source, target):
         begin_path = nx.shortest_path(self.explored_graph, self.start_page, source)
@@ -42,6 +56,7 @@ class WikiExplorer:
               colorama.Fore.RED + " -> ".join(end_path))
 
     def search_path(self):
+        # Item in heap: [rank, node, dest_node that rank refers to]
         sources_heap = [[self.get_page_rank(self.start_page, self.end_page), self.start_page, self.end_page]]
         seen_sources = set([self.start_page])
         targets_heap = [[self.get_page_rank(self.end_page, self.start_page), self.end_page, self.start_page]]
@@ -55,13 +70,13 @@ class WikiExplorer:
             if self.search_number % 2 == 0:
                 # Advance forward
                 current_target = targets_heap[0][1]
-                while not nx.has_path(self.explored_graph, current_target, self.end_page):
+                while not self.is_valid_target(current_target):
                     heapq.heappop(targets_heap)
                     current_target = targets_heap[0][1]
 
                 _, current_source, from_target = heapq.heappop(sources_heap)
-                while from_target != current_target or not nx.has_path(self.explored_graph, self.start_page, current_source):
-                    if nx.has_path(self.explored_graph, self.start_page, current_source):
+                while from_target != current_target or not self.is_valid_source(current_source):
+                    if self.is_valid_source(current_source):
                         heapq.heappush(sources_heap, [self.get_page_rank(current_source, current_target), current_source, current_target])
                     else:
                         seen_sources.discard(current_source)
@@ -78,13 +93,13 @@ class WikiExplorer:
             else:
                 # Advance backwards
                 current_source = sources_heap[0][1]
-                while not nx.has_path(self.explored_graph, self.start_page, current_source):
+                while not self.is_valid_source(current_source):
                     heapq.heappop(sources_heap)
                     current_source = sources_heap[0][1]
 
                 _, current_target, from_source = heapq.heappop(targets_heap)
-                while from_source != current_source or not nx.has_path(self.explored_graph, current_target, self.end_page):
-                    if nx.has_path(self.explored_graph, current_target, self.end_page):
+                while from_source != current_source or not self.is_valid_target(current_target):
+                    if self.is_valid_target(current_target):
                         heapq.heappush(targets_heap, [self.get_page_rank(current_target, current_source), current_target, current_source])
                     else:
                         seen_targets.discard(current_target)
@@ -98,10 +113,13 @@ class WikiExplorer:
                 targets_heap = list(heapq.merge(targets_heap, new_neighbors_with_ranks))
                 self.explored_graph.add_edges_from([(neighbor, current_target) for neighbor in neighbors])
 
+            # Check current path
             self.print_current_path(current_source, current_target)
             self.search_number += 1
             while nx.has_path(self.explored_graph, self.start_page, self.end_page):
                 path = nx.shortest_path(self.explored_graph, self.start_page, self.end_page)
+
+                # Validate path, remove edges that aren't real
                 is_valid_path = True
                 for i in range(len(path)-1):
                     if Page(path[i+1]) not in Page(path[i]).outgoing_pages:
@@ -111,8 +129,8 @@ class WikiExplorer:
                 if is_valid_path:
                     print("Found path" + f" (len={len(path)}): " + " -> ".join(path))
                     return path
-        else:
-            print("No path exists")
+
+        print("No path exists")
 
     def validate_path(self, path):
         assert path[0] == self.start_page
@@ -122,6 +140,7 @@ class WikiExplorer:
                 assert Page(path[i+1]) in Page(path[i]).outgoing_pages
             except AssertionError:
                 print(f"{path[i+1]} not in {path[i]}")
+                raise
 
 
 def get_links_from_html(url):
@@ -239,13 +258,7 @@ def get_nlp_similarity(text1, text2):
 
 
 def search_path_on_wikipedia(start_page_name, end_page_name):
-    def rank_of_page(wiki_explorer, page_name):
-        return -get_nlp_similarity(page_name, wiki_explorer.target_page)
-
-    wiki_exp = WikiExplorer(start_page_name,
-                            end_page_name,
-                            lambda page_name: [page.name for page in Page(page_name).outgoing_pages],
-                            rank_of_page)
+    wiki_exp = WikiExplorer(start_page_name, end_page_name)
     path = wiki_exp.search_path()
     wiki_exp.validate_path(path)
 
