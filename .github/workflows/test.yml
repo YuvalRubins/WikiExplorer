@@ -38,4 +38,4 @@ jobs:
       - run: python -m spacy download en_core_web_lg
 
       # Run only part of the test suite based on matrix.shard
-      - run: pytest --splits ${{ env.MAX_JOBS }} --group ${{ matrix.shard }}
+      - run: pytest --splits ${{ env.MAX_JOBS }} --group ${{ matrix.shard }} Tests.py
