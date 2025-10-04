@@ -4,6 +4,7 @@ requests
 beautifulsoup4
 networkx
 spacy
+huggingface_hub[hf_xet]
 colorama
 pytest
 pytest-split

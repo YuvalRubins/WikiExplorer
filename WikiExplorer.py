@@ -3,11 +3,12 @@ import heapq
 from functools import cached_property
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, unquote
 import argparse
 import colorama
-import spacy
-nlp = spacy.load("en_core_web_lg")  # python -m spacy download en_core_web_lg
+
+from NLPModels import NLPModel, EnglishNLPModel, HebrewNLPModel
+
 colorama.init(autoreset=True)
 
 
@@ -15,11 +16,12 @@ class WikiExplorer:
     """
     Wiki explorer for path finding between pages
     """
-    def __init__(self, start_page_name: str, end_page_name: str):
+    def __init__(self, start_page_name: str, end_page_name: str, nlp_model: NLPModel):
         self.start_page = start_page_name
         self.end_page = end_page_name
         self.explored_graph = nx.DiGraph()
         self.search_number = 0
+        self.nlp_model = nlp_model
 
     def get_page_rank(self, page, dest_page):
         """
@@ -27,7 +29,7 @@ class WikiExplorer:
         (basically how similar is the current page to the dest page)
         Smaller rank is a better rank
         """
-        return -get_nlp_similarity(page, dest_page)
+        return -self.nlp_model.get_nlp_similarity(page, dest_page)
 
     def get_outgoing_neighbors(self, node):
         return {page.name for page in Page(node).outgoing_pages}
@@ -51,9 +53,9 @@ class WikiExplorer:
         begin_path = nx.shortest_path(self.explored_graph, self.start_page, source)
         end_path = nx.shortest_path(self.explored_graph, target, self.end_page)
         print(f"{self.search_number:3}) " +
-              colorama.Fore.GREEN + " -> ".join(begin_path) +
+              colorama.Fore.GREEN + Page.get_path_string(begin_path) +
               colorama.Style.RESET_ALL + "   ===>   " +
-              colorama.Fore.RED + " -> ".join(end_path))
+              colorama.Fore.RED + Page.get_path_string(end_path))
 
     def search_path(self):
         # Item in heap: [rank, node, dest_node that rank refers to]
@@ -126,7 +128,7 @@ class WikiExplorer:
                         Page(path[i+1]).incoming_pages.discard(path[i])
                         is_valid_path = False
                 if is_valid_path:
-                    print("Found path" + f" (len={len(path)}): " + " -> ".join(path))
+                    print("Found path" + f" (len={len(path)}): " + Page.get_path_string(path))
                     return path
 
         print("No path exists")
@@ -147,9 +149,15 @@ class NotWikiPage(Exception):
 
 
 class Page:
-    URL_PAGE_HEADER = "https://en.wikipedia.org/wiki/"
+    HEBREW_URL_PAGE_HEADER = "https://he.wikipedia.org/wiki/"
+    ENGLISH_URL_PAGE_HEADER = "https://en.wikipedia.org/wiki/"
     NO_NAV_BOXES = False
+    IS_HEBREW = False
     _pages = {}
+
+    @staticmethod
+    def get_url_page_header():
+        return Page.HEBREW_URL_PAGE_HEADER if Page.IS_HEBREW else Page.ENGLISH_URL_PAGE_HEADER
 
     def __new__(cls, name):
         if name in cls._pages:
@@ -164,18 +172,24 @@ class Page:
 
     @staticmethod
     def name_to_url(name: str) -> str:
-        return Page.URL_PAGE_HEADER + name
+        if Page.IS_HEBREW:
+            name = name[::-1]
+        return Page.get_url_page_header() + name
 
     @staticmethod
     def is_url_of_wiki_page(url: str) -> bool:
         name = url.split('/')[-1]
-        return url.startswith(Page.URL_PAGE_HEADER) and url.count('/') == Page.URL_PAGE_HEADER.count('/') and \
-                ":" not in name and name != "Main_Page"
+        return url.startswith(Page.get_url_page_header()) and url.count('/') == Page.get_url_page_header().count('/') and \
+                ":" not in name and name != "Main_Page" and unquote(name) != "עמוד_ראשי"
 
     @staticmethod
     def url_to_name(url: str) -> str:
         if Page.is_url_of_wiki_page(url):
-            return url.split('/')[-1].split("#")[0]
+            name = url.split('/')[-1].split("#")[0]
+            name = unquote(name)
+            if Page.IS_HEBREW:
+                name = name[::-1]
+            return name
         else:
             raise NotWikiPage(url)
 
@@ -188,7 +202,7 @@ class Page:
                 "Chrome/122.0 Safari/537.36"
             )
         }
-        response = requests.get(f"{Page.URL_PAGE_HEADER}Special:Random", headers=headers)
+        response = requests.get(f"{Page.get_url_page_header()}Special:Random", headers=headers)
         return Page.url_to_name(response.url)
 
     @staticmethod
@@ -203,7 +217,7 @@ class Page:
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
         if Page.NO_NAV_BOXES:
-            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}):
+            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption"):
                 nav_tag.decompose()
         return {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
 
@@ -218,13 +232,18 @@ class Page:
                 continue
         return pages
 
+    @staticmethod
+    def get_path_string(path):
+        return " -> ".join(path)
+
     @cached_property
     def outgoing_pages(self):
         return self.get_wikipedia_pages_from_url(self.url).difference([self])
 
     @cached_property
     def incoming_pages(self):
-        incoming_pages = self.get_wikipedia_pages_from_url(f"{self.URL_PAGE_HEADER}Special:WhatLinksHere/{self.name}").difference([self])
+        name = self.name[::-1] if self.IS_HEBREW else self.name
+        incoming_pages = self.get_wikipedia_pages_from_url(f"{self.get_url_page_header()}Special:WhatLinksHere/{name}").difference([self])
         not_incoming_pages = set()
         # for page in incoming_pages:
         #     if self not in page.outgoing_pages:
@@ -243,21 +262,9 @@ class Page:
         return self.name
 
 
-def normalize_text_for_nlp(text: str) -> str:
-    return text.lower().replace("_", " ").replace(",", " ").replace(".", " ")
-
-
-def get_nlp_similarity(text1, text2):
-    doc1 = nlp(normalize_text_for_nlp(text1))
-    doc2 = nlp(normalize_text_for_nlp(text2))
-    if not doc1.has_vector:
-        return 0
-    else:
-        return doc1.similarity(doc2)
-
-
-def search_path_on_wikipedia(start_page_name, end_page_name):
-    wiki_exp = WikiExplorer(start_page_name, end_page_name)
+def search_path_on_wikipedia(start_page_name, end_page_name, is_hebrew=False):
+    nlp_model = HebrewNLPModel() if is_hebrew else EnglishNLPModel()
+    wiki_exp = WikiExplorer(start_page_name, end_page_name, nlp_model)
     path = wiki_exp.search_path()
     wiki_exp.validate_path(path)
 
@@ -267,16 +274,22 @@ def main():
     parser.add_argument("--start-page", '-s', type=str, help="Start page (takes a random page is not set)", default='*')
     parser.add_argument("--end-page", '-e', type=str, help="Target page (takes a random page is not set)", default='*')
     parser.add_argument("--no-nav-boxes", '-nn', help="Don't use links in navigation boxes", action="store_true")
+    parser.add_argument("--hebrew", '-he', help="In hebrew Wikipedia", action="store_true")
 
     args = parser.parse_args()
 
+    Page.NO_NAV_BOXES = args.no_nav_boxes
+    Page.IS_HEBREW = args.hebrew
     if args.start_page == '*':
         args.start_page = Page.get_random_page_name()
     if args.end_page == '*':
         args.end_page = Page.get_random_page_name()
-    Page.NO_NAV_BOXES = args.no_nav_boxes
 
-    search_path_on_wikipedia(args.start_page, args.end_page)
+    if args.hebrew:
+        args.start_page = args.start_page[::-1]
+        args.end_page = args.end_page[::-1]
+
+    search_path_on_wikipedia(args.start_page, args.end_page, args.hebrew)
 
 
 if __name__ == "__main__":
