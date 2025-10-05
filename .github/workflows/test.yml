@@ -38,4 +38,10 @@ jobs:
       - run: python -m spacy download en_core_web_lg
 
       # Run only part of the test suite based on matrix.shard
-      - run: pytest --splits ${{ env.MAX_JOBS }} --group ${{ matrix.shard }} Tests.py
+      - run: |
+              pytest --splits ${{ env.MAX_JOBS }} --group ${{ matrix.shard }} Tests.py || exit_code=$?
+              if [ "$exit_code" = "5" ]; then
+                echo "No tests in shard"
+                exit 0
+              fi
+              exit $exit_code

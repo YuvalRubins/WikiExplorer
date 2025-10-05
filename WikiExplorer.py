@@ -189,7 +189,7 @@ class Page:
         name = url[len(Page.get_url_page_header()):]
         name = unquote(name)
         return url.startswith(Page.get_url_page_header()) and \
-               name != "Main_Page" and name != "עמוד_ראשי" and "?" not in name and \
+               name != "Main_Page" and name != "עמוד_ראשי" and "?" not in name.rstrip('?') and \
                all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
                                                            "User", "User_talk", "Template", "Template_talk", "Portal",
                                                            "Wikipedia_talk", "Draft", "Category_talk"
