@@ -182,7 +182,7 @@ class Page:
                name != "Main_Page" and name != "עמוד_ראשי" and "?" not in name and \
                all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
                                                            "User", "User_talk", "Template", "Template_talk", "Portal",
-                                                           "Wikipedia_talk"
+                                                           "Wikipedia_talk", "Draft",
                                                            "שיחה", "מיוחד", "קטגוריה", "קובץ", "ויקיפדיה", "משתמש",
                                                            "שיחת_משתמש", "עזרה", "פורטל", "טיוטה", "משתמשת", "תבנית", "שיחת_תבנית"]])
 
@@ -219,7 +219,6 @@ class Page:
             )
         }
         response = requests.get(url, headers=headers)
-        assert response.status_code == 200
         soup = BeautifulSoup(response.text, "html.parser")
         for tag in soup.find_all("footer"):
             tag.decompose()
