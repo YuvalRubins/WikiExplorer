@@ -3,7 +3,7 @@ import heapq
 from functools import cached_property
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, unquote
+from urllib.parse import urljoin, unquote, quote
 import argparse
 import colorama
 
@@ -170,17 +170,21 @@ class Page:
     def name_to_url(name: str) -> str:
         if Page.IS_HEBREW:
             name = name[::-1]
-        return Page.get_url_page_header() + name
+        return Page.get_url_page_header() + quote(name)
 
     @staticmethod
     def is_url_of_wiki_page(url: str) -> bool:
         if not url.startswith(Page.get_url_page_header()):
             return False
         name = url[len(Page.get_url_page_header()):]
+        name = unquote(name)
         return url.startswith(Page.get_url_page_header()) and \
-               name != "Main_Page" and unquote(name) != "עמוד_ראשי" and "?" not in name and \
+               name != "Main_Page" and name != "עמוד_ראשי" and "?" not in name and \
                all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
-                                                           "User", "User_talk", "Template", "Template_talk", "Portal"]])
+                                                           "User", "User_talk", "Template", "Template_talk", "Portal",
+                                                           "Wikipedia_talk"
+                                                           "שיחה", "מיוחד", "קטגוריה", "קובץ", "ויקיפדיה", "משתמש",
+                                                           "שיחת_משתמש", "עזרה", "פורטל", "טיוטה", "משתמשת", "תבנית", "שיחת_תבנית"]])
 
     @staticmethod
     def url_to_name(url: str) -> str:
