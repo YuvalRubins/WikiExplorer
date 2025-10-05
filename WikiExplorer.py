@@ -139,16 +139,6 @@ class WikiExplorer:
 
         print("No path exists")
 
-    def validate_path(self, path):
-        assert path[0] == self.start_page
-        assert path[-1] == self.end_page
-        for i in range(len(path)-1):
-            try:
-                assert Page(path[i+1]) in Page(path[i]).outgoing_pages
-            except AssertionError:
-                print(f"{path[i+1]} not in {path[i]}")
-                raise
-
 
 class NotWikiPage(Exception):
     pass
@@ -271,12 +261,24 @@ class Page:
         return self.name
 
 
+def validate_path(path, start_page, end_page):
+    assert path[0] == start_page
+    assert path[-1] == end_page
+    for i in range(len(path)-1):
+        try:
+            assert Page(path[i+1]) in Page(path[i]).outgoing_pages
+        except AssertionError:
+            print(f"{path[i+1]} not in {path[i]}")
+            raise
+
+
 def search_path_on_wikipedia(start_page_name, end_page_name, is_hebrew=False):
     nlp_model = HebrewNLPModel() if is_hebrew else EnglishNLPModel()
     wiki_exp = WikiExplorer(start_page_name, end_page_name, nlp_model)
     path = wiki_exp.search_path()
     if path:
-        wiki_exp.validate_path(path)
+        validate_path(path, start_page_name, end_page_name)
+    return path
 
 
 def main():

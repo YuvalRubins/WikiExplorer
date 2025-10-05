@@ -1,13 +1,17 @@
 import os
 import pytest
-from WikiExplorer import search_path_on_wikipedia, Page
+from WikiExplorer import search_path_on_wikipedia, validate_path, Page
 
 CLI_COMMAND = "python WikiExplorer.py"
 
 
 def run_search(start_page, end_page, **kwargs):
     print(f"Searching path from {start_page} to {end_page}")
-    search_path_on_wikipedia(start_page, end_page, **kwargs)
+    path = search_path_on_wikipedia(start_page, end_page, **kwargs)
+    if Page(end_page).incoming_pages and Page(start_page).outgoing_pages:
+        validate_path(path, start_page, end_page)
+    else:
+        assert path is None
 
 
 def run_cli(args):
