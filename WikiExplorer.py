@@ -85,7 +85,11 @@ class WikiExplorer:
                         heapq.heappush(sources_heap, [self.get_page_rank(current_source, current_target), current_source, current_target])
                     else:
                         seen_sources.discard(current_source)
-                    _, current_source, from_target = heapq.heappop(sources_heap)
+                    if sources_heap:
+                        _, current_source, from_target = heapq.heappop(sources_heap)
+                    else:
+                        print("No path exists")
+                        return
 
                 neighbors = self.get_outgoing_neighbors(current_source)
                 new_neighbors = neighbors.difference(seen_sources)
@@ -112,7 +116,11 @@ class WikiExplorer:
                         heapq.heappush(targets_heap, [self.get_page_rank(current_target, current_source), current_target, current_source])
                     else:
                         seen_targets.discard(current_target)
-                    _, current_target, from_source = heapq.heappop(targets_heap)
+                    if targets_heap:
+                        _, current_target, from_source = heapq.heappop(targets_heap)
+                    else:
+                        print("No path exists")
+                        return
 
                 neighbors = self.get_incoming_neighbors(current_target)
                 new_neighbors = neighbors.difference(seen_targets)
