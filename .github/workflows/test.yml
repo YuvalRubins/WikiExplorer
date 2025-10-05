@@ -3,7 +3,7 @@ env:
   MAX_JOBS: 256
 
 on:
-  push
+  [push, workflow_dispatch]
 
 
 jobs:
