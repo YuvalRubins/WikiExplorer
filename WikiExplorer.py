@@ -73,6 +73,7 @@ class WikiExplorer:
                 current_target = targets_heap[0][1]
                 while not self.is_valid_target(current_target):
                     heapq.heappop(targets_heap)
+                    seen_targets.discard(current_target)
                     if not targets_heap:
                         print("No path exists")
                         return
@@ -99,6 +100,7 @@ class WikiExplorer:
                 current_source = sources_heap[0][1]
                 while not self.is_valid_source(current_source) and sources_heap:
                     heapq.heappop(sources_heap)
+                    seen_sources.discard(current_source)
                     if not sources_heap:
                         print("No path exists")
                         return
@@ -182,7 +184,7 @@ class Page:
                name != "Main_Page" and name != "עמוד_ראשי" and "?" not in name and \
                all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
                                                            "User", "User_talk", "Template", "Template_talk", "Portal",
-                                                           "Wikipedia_talk", "Draft",
+                                                           "Wikipedia_talk", "Draft", "Category_talk"
                                                            "שיחה", "מיוחד", "קטגוריה", "קובץ", "ויקיפדיה", "משתמש",
                                                            "שיחת_משתמש", "עזרה", "פורטל", "טיוטה", "משתמשת", "תבנית", "שיחת_תבנית"]])
 
