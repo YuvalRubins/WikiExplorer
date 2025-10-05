@@ -8,3 +8,5 @@ huggingface_hub[hf_xet]
 colorama
 pytest
 pytest-split
+transformers
+torch
