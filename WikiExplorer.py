@@ -71,9 +71,13 @@ class WikiExplorer:
             if self.search_number % 2 == 0:
                 # Advance forward
                 current_target = targets_heap[0][1]
-                while not self.is_valid_target(current_target):
+                while not self.is_valid_target(current_target) and targets_heap:
                     heapq.heappop(targets_heap)
                     current_target = targets_heap[0][1]
+
+                # heap got empty
+                if not targets_heap:
+                    break
 
                 _, current_source, from_target = heapq.heappop(sources_heap)
                 while from_target != current_target or not self.is_valid_source(current_source):
@@ -94,9 +98,13 @@ class WikiExplorer:
             else:
                 # Advance backwards
                 current_source = sources_heap[0][1]
-                while not self.is_valid_source(current_source):
+                while not self.is_valid_source(current_source) and sources_heap:
                     heapq.heappop(sources_heap)
                     current_source = sources_heap[0][1]
+
+                # heap got empty
+                if not sources_heap:
+                    break
 
                 _, current_target, from_source = heapq.heappop(targets_heap)
                 while from_source != current_source or not self.is_valid_target(current_target):
@@ -180,7 +188,8 @@ class Page:
     def is_url_of_wiki_page(url: str) -> bool:
         name = url.split('/')[-1]
         return url.startswith(Page.get_url_page_header()) and url.count('/') == Page.get_url_page_header().count('/') and \
-                ":" not in name and name != "Main_Page" and unquote(name) != "עמוד_ראשי"
+               name != "Main_Page" and unquote(name) != "עמוד_ראשי" and "?" not in name and \
+               all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special", "User_talk", "Template_talk", "Portal:"]])
 
     @staticmethod
     def url_to_name(url: str) -> str:
@@ -216,6 +225,8 @@ class Page:
         }
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
+        for tag in soup.find_all("footer"):
+            tag.decompose()
         if Page.NO_NAV_BOXES:
             for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption"):
                 nav_tag.decompose()
@@ -266,7 +277,8 @@ def search_path_on_wikipedia(start_page_name, end_page_name, is_hebrew=False):
     nlp_model = HebrewNLPModel() if is_hebrew else EnglishNLPModel()
     wiki_exp = WikiExplorer(start_page_name, end_page_name, nlp_model)
     path = wiki_exp.search_path()
-    wiki_exp.validate_path(path)
+    if path:
+        wiki_exp.validate_path(path)
 
 
 def main():
