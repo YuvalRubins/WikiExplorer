@@ -174,15 +174,18 @@ class Page:
 
     @staticmethod
     def is_url_of_wiki_page(url: str) -> bool:
-        name = url.split('/')[-1]
-        return url.startswith(Page.get_url_page_header()) and url.count('/') == Page.get_url_page_header().count('/') and \
+        if not url.startswith(Page.get_url_page_header()):
+            return False
+        name = url[len(Page.get_url_page_header()):]
+        return url.startswith(Page.get_url_page_header()) and \
                name != "Main_Page" and unquote(name) != "עמוד_ראשי" and "?" not in name and \
-               all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special", "User_talk", "Template_talk", "Portal:"]])
+               all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
+                                                           "User", "User_talk", "Template", "Template_talk", "Portal"]])
 
     @staticmethod
     def url_to_name(url: str) -> str:
         if Page.is_url_of_wiki_page(url):
-            name = url.split('/')[-1].split("#")[0]
+            name = url[len(Page.get_url_page_header()):].split('#')[0]
             name = unquote(name)
             if Page.IS_HEBREW:
                 name = name[::-1]
@@ -212,6 +215,7 @@ class Page:
             )
         }
         response = requests.get(url, headers=headers)
+        assert response.status_code == 200
         soup = BeautifulSoup(response.text, "html.parser")
         for tag in soup.find_all("footer"):
             tag.decompose()
