@@ -71,13 +71,12 @@ class WikiExplorer:
             if self.search_number % 2 == 0:
                 # Advance forward
                 current_target = targets_heap[0][1]
-                while not self.is_valid_target(current_target) and targets_heap:
+                while not self.is_valid_target(current_target):
                     heapq.heappop(targets_heap)
+                    if not targets_heap:
+                        print("No path exists")
+                        return
                     current_target = targets_heap[0][1]
-
-                # heap got empty
-                if not targets_heap:
-                    break
 
                 _, current_source, from_target = heapq.heappop(sources_heap)
                 while from_target != current_target or not self.is_valid_source(current_source):
@@ -100,11 +99,10 @@ class WikiExplorer:
                 current_source = sources_heap[0][1]
                 while not self.is_valid_source(current_source) and sources_heap:
                     heapq.heappop(sources_heap)
+                    if not sources_heap:
+                        print("No path exists")
+                        return
                     current_source = sources_heap[0][1]
-
-                # heap got empty
-                if not sources_heap:
-                    break
 
                 _, current_target, from_source = heapq.heappop(targets_heap)
                 while from_source != current_source or not self.is_valid_target(current_target):
