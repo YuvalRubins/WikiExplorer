@@ -5,23 +5,35 @@ from WikiExplorer import search_path_on_wikipedia, validate_path, Page
 CLI_COMMAND = "python WikiExplorer.py"
 
 
+def bfs(start_node, get_neighbors, max_size):
+    nodes_to_explore = {start_node}
+    explored_nodes = set()
+    while nodes_to_explore and len(explored_nodes) < max_size:
+        current_node = nodes_to_explore.pop()
+        print(current_node)
+        explored_nodes.add(current_node)
+        neighbors = get_neighbors(current_node)
+        neighbors.difference_update(explored_nodes)
+        nodes_to_explore.update(neighbors)
+
+    return explored_nodes
+
+
 def get_all_incoming_pages(page, max_size=float("inf")):
-    pages_to_explore = {Page(page)}
-    explored_pages = set()
-    while pages_to_explore and len(explored_pages) < max_size:
-        current_page = pages_to_explore.pop()
-        print(current_page)
-        explored_pages.add(current_page)
-        incoming_pages = current_page.incoming_pages
+    def get_incoming_pages(page):
+        incoming_pages = page.incoming_pages
         not_incoming_pages = set()
         for page in incoming_pages:
-            if current_page not in page.outgoing_pages:
+            if page not in page.outgoing_pages:
                 not_incoming_pages.add(page)
         incoming_pages.difference_update(not_incoming_pages)
-        incoming_pages.difference_update(explored_pages)
-        pages_to_explore.update(incoming_pages)
+        return incoming_pages
 
-    return explored_pages
+    return bfs(Page(page), get_incoming_pages, max_size)
+
+
+def get_all_outgoing_pages(page, max_size=float("inf")):
+    return bfs(Page(page), lambda page: page.outgoing_pages, max_size)
 
 
 def run_search(start_page, end_page, **kwargs):
@@ -33,7 +45,10 @@ def run_search(start_page, end_page, **kwargs):
         MAX_SIZE = 100
         incoming_pages = get_all_incoming_pages(end_page, max_size=MAX_SIZE)
         assert Page(start_page) not in incoming_pages
-        assert len(incoming_pages) < MAX_SIZE
+        if len(incoming_pages) >= MAX_SIZE:
+            outgoing_pages = get_all_outgoing_pages(start_page, max_size=MAX_SIZE)
+            assert Page(end_page) not in outgoing_pages
+            assert len(outgoing_pages) < MAX_SIZE
 
 
 def run_cli(args):
@@ -57,7 +72,7 @@ def test_random_search(i):
     run_search(start_page, end_page)
 
 
-@pytest.mark.parametrize("i", range(1000))
+@pytest.mark.parametrize("i", range(1_000))
 def test_random_search_without_nav(i):
     Page.NO_NAV_BOXES = True
     start_page = Page.get_random_page_name()
