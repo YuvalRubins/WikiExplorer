@@ -11,6 +11,8 @@ from NLPModels import NLPModel, EnglishNLPModel, HebrewNLPModel
 
 colorama.init(autoreset=True)
 
+RANDOM_PAGE = '*'
+
 
 class WikiExplorer:
     """
@@ -189,12 +191,14 @@ class Page:
         name = url[len(Page.get_url_page_header()):]
         name = unquote(name)
         return url.startswith(Page.get_url_page_header()) and \
-               name != "Main_Page" and name != "עמוד_ראשי" and "?" not in name.rstrip('?') and \
-               all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
-                                                           "User", "User_talk", "Template", "Template_talk", "Portal",
-                                                           "Wikipedia_talk", "Draft", "Category_talk",
-                                                           "שיחה", "מיוחד", "קטגוריה", "קובץ", "ויקיפדיה", "משתמש",
-                                                           "שיחת_משתמש", "עזרה", "פורטל", "טיוטה", "משתמשת", "תבנית", "שיחת_תבנית"]])
+            all(name != s for s in ["Main_Page", "עמוד_ראשי"]) and \
+            all(not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
+                                                       "User", "User_talk", "Template", "Template_talk", "Portal",
+                                                       "Wikipedia_talk", "Draft", "Category_talk",
+                                                       "שיחה", "מיוחד", "קטגוריה", "קובץ", "ויקיפדיה", "משתמש",
+                                                       "שיחת_משתמש", "עזרה", "פורטל", "טיוטה", "משתמשת", "תבנית",
+                                                       "שיחת_תבנית", "שיחת_קטגוריה", "שיחת_ויקיפדיה",
+                                                       ])
 
     @staticmethod
     def url_to_name(url: str) -> str:
@@ -233,7 +237,7 @@ class Page:
         for tag in soup.find_all("footer"):
             tag.decompose()
         if Page.NO_NAV_BOXES:
-            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption") + soup.find_all("table", attrs={'class': 'infobox'}) + soup.find_all("table", attrs={'class': 'navbox'}) + soup.find_all("div", attrs={'role': 'note'}):
+            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption") + soup.find_all("table", attrs={'class': 'infobox'}) + soup.find_all("table", attrs={'class': 'navbox'}) + soup.find_all("div", attrs={'role': 'note'}) + soup.find_all("table", attrs={'class': 'wikitable'}) + soup.find_all("table", attrs={'class': 'sortable'}):
                 nav_tag.decompose()
         return {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
 
@@ -300,8 +304,8 @@ def search_path_on_wikipedia(start_page_name, end_page_name, is_hebrew=False):
 
 def main():
     parser = argparse.ArgumentParser(description="Search a path from one Wikipedia page to another")
-    parser.add_argument("--start-page", '-s', type=str, help="Start page (takes a random page is not set)", default='*')
-    parser.add_argument("--end-page", '-e', type=str, help="Target page (takes a random page is not set)", default='*')
+    parser.add_argument("--start-page", '-s', type=str, help="Start page (takes a random page is not set)", default=RANDOM_PAGE)
+    parser.add_argument("--end-page", '-e', type=str, help="Target page (takes a random page is not set)", default=RANDOM_PAGE)
     parser.add_argument("--no-nav-boxes", '-nn', help="Don't use links in navigation boxes", action="store_true")
     parser.add_argument("--hebrew", '-he', help="In hebrew Wikipedia", action="store_true")
 
@@ -309,16 +313,22 @@ def main():
 
     Page.NO_NAV_BOXES = args.no_nav_boxes
     Page.IS_HEBREW = args.hebrew
-    if args.start_page == '*':
-        args.start_page = Page.get_random_page_name()
-    if args.end_page == '*':
-        args.end_page = Page.get_random_page_name()
+    if args.start_page == RANDOM_PAGE:
+        start_page = Page.get_random_page_name()
+    else:
+        start_page = args.start_page
+    if args.end_page == RANDOM_PAGE:
+        end_page = Page.get_random_page_name()
+    else:
+        end_page = args.end_page
 
     if args.hebrew:
-        args.start_page = args.start_page[::-1]
-        args.end_page = args.end_page[::-1]
+        if args.start_page != RANDOM_PAGE:
+            start_page = start_page[::-1]
+        if args.end_page != RANDOM_PAGE:
+            end_page = end_page[::-1]
 
-    search_path_on_wikipedia(args.start_page, args.end_page, args.hebrew)
+    search_path_on_wikipedia(start_page, end_page, args.hebrew)
 
 
 if __name__ == "__main__":

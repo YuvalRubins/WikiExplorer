@@ -65,7 +65,7 @@ def test_hebrew_search(start_page, end_page):
     Page.IS_HEBREW = False
 
 
-@pytest.mark.parametrize("i", range(1_000))
+@pytest.mark.parametrize("i", range(2_000))
 def test_random_search(i):
     start_page = Page.get_random_page_name()
     end_page = Page.get_random_page_name()
@@ -79,6 +79,26 @@ def test_random_search_without_nav(i):
     end_page = Page.get_random_page_name()
     run_search(start_page, end_page)
     Page.NO_NAV_BOXES = False
+
+
+@pytest.mark.parametrize("i", range(2_000))
+def test_hebrew_random_search(i):
+    Page.IS_HEBREW = True
+    start_page = Page.get_random_page_name()
+    end_page = Page.get_random_page_name()
+    run_search(start_page, end_page, is_hebrew=True)
+    Page.IS_HEBREW = False
+
+
+@pytest.mark.parametrize("i", range(2_000))
+def test_hebrew_random_search_without_nav(i):
+    Page.NO_NAV_BOXES = True
+    Page.IS_HEBREW = True
+    start_page = Page.get_random_page_name()
+    end_page = Page.get_random_page_name()
+    run_search(start_page, end_page, is_hebrew=True)
+    Page.NO_NAV_BOXES = False
+    Page.IS_HEBREW = False
 
 
 @pytest.mark.parametrize("args", ["", "-s Cat", "-e Cat", "-s Cat -e Dog", "-s Cat -e '*'",
