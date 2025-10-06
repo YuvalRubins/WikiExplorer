@@ -17,7 +17,7 @@ def get_all_incoming_pages(page, max_size=float("inf")):
         for page in incoming_pages:
             if current_page not in page.outgoing_pages:
                 not_incoming_pages.add(page)
-        incoming_pages.difference(not_incoming_pages)
+        incoming_pages.difference_update(not_incoming_pages)
         incoming_pages.difference_update(explored_pages)
         pages_to_explore.update(incoming_pages)
 
