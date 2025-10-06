@@ -192,7 +192,7 @@ class Page:
                name != "Main_Page" and name != "עמוד_ראשי" and "?" not in name.rstrip('?') and \
                all([not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
                                                            "User", "User_talk", "Template", "Template_talk", "Portal",
-                                                           "Wikipedia_talk", "Draft", "Category_talk"
+                                                           "Wikipedia_talk", "Draft", "Category_talk",
                                                            "שיחה", "מיוחד", "קטגוריה", "קובץ", "ויקיפדיה", "משתמש",
                                                            "שיחת_משתמש", "עזרה", "פורטל", "טיוטה", "משתמשת", "תבנית", "שיחת_תבנית"]])
 
@@ -233,7 +233,7 @@ class Page:
         for tag in soup.find_all("footer"):
             tag.decompose()
         if Page.NO_NAV_BOXES:
-            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption"):
+            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption") + soup.find_all("table", attrs={'class': 'infobox'}) + soup.find_all("div", attrs={'role': 'note'}):
                 nav_tag.decompose()
         return {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
 

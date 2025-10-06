@@ -5,10 +5,10 @@ from WikiExplorer import search_path_on_wikipedia, validate_path, Page
 CLI_COMMAND = "python WikiExplorer.py"
 
 
-def get_all_incoming_pages(page):
+def get_all_incoming_pages(page, max_size=float("inf")):
     pages_to_explore = {Page(page)}
     explored_pages = set()
-    while pages_to_explore:
+    while pages_to_explore and len(explored_pages) < max_size:
         current_page = pages_to_explore.pop()
         print(current_page)
         explored_pages.add(current_page)
@@ -27,10 +27,10 @@ def get_all_incoming_pages(page):
 def run_search(start_page, end_page, **kwargs):
     print(f"Searching path from {start_page} to {end_page}")
     path = search_path_on_wikipedia(start_page, end_page, **kwargs)
-    validate_path(path, start_page, end_page)
-    # if path:
-    # else:
-    #     assert Page(start_page) not in get_all_incoming_pages(end_page)
+    if path:
+        validate_path(path, start_page, end_page)
+    else:
+        assert Page(start_page) not in get_all_incoming_pages(end_page, max_size=100_000)
 
 
 def run_cli(args):
@@ -61,3 +61,11 @@ def test_random_search_without_nav(i):
     end_page = Page.get_random_page_name()
     run_search(start_page, end_page)
     Page.NO_NAV_BOXES = False
+
+
+@pytest.mark.parametrize("args", ["", "-s Cat", "-e Cat", "-s Cat -e Dog", "-s Cat -e *",
+                                  "-s * -e Cat", "-s * -e *", "-nn", "-s Cat -e Dog -nn",
+                                  "-s Cat -nn",
+                                  "-he -s חתול -e כלב", "-he -s חתול -e כלב -nn"])
+def test_cli(args):
+    run_cli(args)
