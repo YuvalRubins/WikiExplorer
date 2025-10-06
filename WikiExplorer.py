@@ -233,7 +233,7 @@ class Page:
         for tag in soup.find_all("footer"):
             tag.decompose()
         if Page.NO_NAV_BOXES:
-            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption") + soup.find_all("table", attrs={'class': 'infobox'}) + soup.find_all("div", attrs={'role': 'note'}):
+            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption") + soup.find_all("table", attrs={'class': 'infobox'}) + soup.find_all("table", attrs={'class': 'navbox'}) + soup.find_all("div", attrs={'role': 'note'}):
                 nav_tag.decompose()
         return {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
 

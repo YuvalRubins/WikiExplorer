@@ -30,7 +30,7 @@ def run_search(start_page, end_page, **kwargs):
     if path:
         validate_path(path, start_page, end_page)
     else:
-        MAX_SIZE = 1_000
+        MAX_SIZE = 100
         incoming_pages = get_all_incoming_pages(end_page, max_size=MAX_SIZE)
         assert Page(start_page) not in incoming_pages
         assert len(incoming_pages) < MAX_SIZE
@@ -66,8 +66,8 @@ def test_random_search_without_nav(i):
     Page.NO_NAV_BOXES = False
 
 
-@pytest.mark.parametrize("args", ["", "-s Cat", "-e Cat", "-s Cat -e Dog", "-s Cat -e *",
-                                  "-s * -e Cat", "-s * -e *", "-nn", "-s Cat -e Dog -nn",
+@pytest.mark.parametrize("args", ["", "-s Cat", "-e Cat", "-s Cat -e Dog", "-s Cat -e '*'",
+                                  "-s '*' -e Cat", "-s '*' -e '*'", "-nn", "-s Cat -e Dog -nn",
                                   "-s Cat -nn",
                                   "-he -s חתול -e כלב", "-he -s חתול -e כלב -nn"])
 def test_cli(args):
