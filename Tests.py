@@ -30,7 +30,10 @@ def run_search(start_page, end_page, **kwargs):
     if path:
         validate_path(path, start_page, end_page)
     else:
-        assert Page(start_page) not in get_all_incoming_pages(end_page, max_size=100_000)
+        MAX_SIZE = 1_000
+        incoming_pages = get_all_incoming_pages(end_page, max_size=MAX_SIZE)
+        assert Page(start_page) not in incoming_pages
+        assert len(incoming_pages) < MAX_SIZE
 
 
 def run_cli(args):
