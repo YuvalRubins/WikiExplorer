@@ -27,10 +27,10 @@ def get_all_incoming_pages(page):
 def run_search(start_page, end_page, **kwargs):
     print(f"Searching path from {start_page} to {end_page}")
     path = search_path_on_wikipedia(start_page, end_page, **kwargs)
-    if path:
-        validate_path(path, start_page, end_page)
-    else:
-        assert Page(start_page) not in get_all_incoming_pages(end_page)
+    validate_path(path, start_page, end_page)
+    # if path:
+    # else:
+    #     assert Page(start_page) not in get_all_incoming_pages(end_page)
 
 
 def run_cli(args):
