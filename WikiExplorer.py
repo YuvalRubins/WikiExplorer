@@ -161,6 +161,7 @@ class Page:
     ENGLISH_URL_PAGE_HEADER = "https://en.wikipedia.org/wiki/"
     NO_NAV_BOXES = False
     IS_HEBREW = False
+    FORBIDDEN_PAGES = ["Main_Page", "עמוד_ראשי"]
     _pages = {}
 
     @staticmethod
@@ -191,7 +192,7 @@ class Page:
         name = url[len(Page.get_url_page_header()):]
         name = unquote(name)
         return url.startswith(Page.get_url_page_header()) and \
-            all(name != s for s in ["Main_Page", "עמוד_ראשי"]) and \
+            all(name != s for s in Page.FORBIDDEN_PAGES) and \
             all(not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
                                                        "User", "User_talk", "Template", "Template_talk", "Portal",
                                                        "Wikipedia_talk", "Draft", "Category_talk",
@@ -308,6 +309,7 @@ def main():
     parser.add_argument("--end-page", '-e', type=str, help="Target page (takes a random page is not set)", default=RANDOM_PAGE)
     parser.add_argument("--no-nav-boxes", '-nn', help="Don't use links in navigation boxes", action="store_true")
     parser.add_argument("--hebrew", '-he', help="In hebrew Wikipedia", action="store_true")
+    parser.add_argument("--forbidden-page", '-fp', action='append', help="Forbidden pages to pass through", default=[])
 
     args = parser.parse_args()
 
@@ -328,6 +330,7 @@ def main():
         if args.end_page != RANDOM_PAGE:
             end_page = end_page[::-1]
 
+    Page.FORBIDDEN_PAGES.extend(args.forbidden_page)
     search_path_on_wikipedia(start_page, end_page, args.hebrew)
 
 
