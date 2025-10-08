@@ -40,6 +40,9 @@ def run_search(start_page, end_page, **kwargs):
     print(f"Searching path from {start_page} to {end_page}")
     path = search_path_on_wikipedia(start_page, end_page, **kwargs)
     if path:
+        if kwargs.get('is_hebrew'):
+            start_page = start_page[::-1]
+            end_page = end_page[::-1]
         validate_path(path, start_page, end_page)
     else:
         MAX_SIZE = 100

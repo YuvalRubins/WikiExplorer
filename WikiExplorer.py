@@ -311,10 +311,8 @@ def search_path_on_wikipedia(start_page_name, end_page_name, is_hebrew=False, ma
     Page.IS_HEBREW = is_hebrew
 
     if is_hebrew:
-        if start_page_name != RANDOM_PAGE:
-            start_page_name = start_page_name[::-1]
-        if end_page_name != RANDOM_PAGE:
-            end_page_name = end_page_name[::-1]
+        start_page_name = start_page_name[::-1]
+        end_page_name = end_page_name[::-1]
 
     if start_page_name == RANDOM_PAGE:
         start_page_name = Page.get_random_page_name()
