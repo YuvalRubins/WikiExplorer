@@ -18,12 +18,13 @@ class WikiExplorer:
     """
     Wiki explorer for path finding between pages
     """
-    def __init__(self, start_page_name: str, end_page_name: str, nlp_model: NLPModel):
+    def __init__(self, start_page_name: str, end_page_name: str, nlp_model: NLPModel, max_path_length: float):
         self.start_page = start_page_name
         self.end_page = end_page_name
         self.explored_graph = nx.DiGraph()
         self.search_number = 0
         self.nlp_model = nlp_model
+        self.max_path_length = max_path_length
 
     def get_page_rank(self, page, dest_page):
         """
@@ -43,13 +44,21 @@ class WikiExplorer:
         """
         Is the node a valid source, i.e. is it connected to the start
         """
-        return nx.has_path(self.explored_graph, self.start_page, node)
+        try:
+            path = nx.shortest_path(self.explored_graph, self.start_page, node)
+            return len(path) <= self.max_path_length
+        except nx.NetworkXNoPath:
+            return False
 
     def is_valid_target(self, node):
         """
         Is the node a valid target, i.e. is it connected to the end
         """
-        return nx.has_path(self.explored_graph, node, self.end_page)
+        try:
+            path = nx.shortest_path(self.explored_graph, node, self.end_page)
+            return len(path) <= self.max_path_length
+        except nx.NetworkXNoPath:
+            return False
 
     def print_current_path(self, source, target):
         begin_path = nx.shortest_path(self.explored_graph, self.start_page, source)
@@ -146,8 +155,11 @@ class WikiExplorer:
                         Page(path[i+1]).incoming_pages.discard(path[i])
                         is_valid_path = False
                 if is_valid_path:
-                    print("Found path" + f" (len={len(path)}): " + Page.get_path_string(path))
-                    return path
+                    if len(path) <= self.max_path_length:
+                        print("Found path" + f" (len={len(path)}): " + Page.get_path_string(path))
+                        return path
+                    else:
+                        break
 
         print("No path exists")
 
@@ -294,9 +306,26 @@ def validate_path(path, start_page, end_page):
             raise
 
 
-def search_path_on_wikipedia(start_page_name, end_page_name, is_hebrew=False):
+def search_path_on_wikipedia(start_page_name, end_page_name, is_hebrew=False, max_path_length=float("inf"), no_nav_boxes=False, forbidden_pages: list=None):
+    Page.NO_NAV_BOXES = no_nav_boxes
+    Page.IS_HEBREW = is_hebrew
+
+    if is_hebrew:
+        if start_page_name != RANDOM_PAGE:
+            start_page_name = start_page_name[::-1]
+        if end_page_name != RANDOM_PAGE:
+            end_page_name = end_page_name[::-1]
+
+    if start_page_name == RANDOM_PAGE:
+        start_page_name = Page.get_random_page_name()
+    if end_page_name == RANDOM_PAGE:
+        end_page_name = Page.get_random_page_name()
+
+    if forbidden_pages:
+        Page.FORBIDDEN_PAGES.extend(forbidden_pages)
+
     nlp_model = HebrewNLPModel() if is_hebrew else EnglishNLPModel()
-    wiki_exp = WikiExplorer(start_page_name, end_page_name, nlp_model)
+    wiki_exp = WikiExplorer(start_page_name, end_page_name, nlp_model, max_path_length)
     path = wiki_exp.search_path()
     if path:
         validate_path(path, start_page_name, end_page_name)
@@ -309,29 +338,11 @@ def main():
     parser.add_argument("--end-page", '-e', type=str, help="Target page (takes a random page is not set)", default=RANDOM_PAGE)
     parser.add_argument("--no-nav-boxes", '-nn', help="Don't use links in navigation boxes", action="store_true")
     parser.add_argument("--hebrew", '-he', help="In hebrew Wikipedia", action="store_true")
+    parser.add_argument("--max-length", '-ml', type=int, help="Maximum allowed length of path (including start and end page)", default=float("inf"))
     parser.add_argument("--forbidden-page", '-fp', action='append', help="Forbidden pages to pass through", default=[])
 
     args = parser.parse_args()
-
-    Page.NO_NAV_BOXES = args.no_nav_boxes
-    Page.IS_HEBREW = args.hebrew
-    if args.start_page == RANDOM_PAGE:
-        start_page = Page.get_random_page_name()
-    else:
-        start_page = args.start_page
-    if args.end_page == RANDOM_PAGE:
-        end_page = Page.get_random_page_name()
-    else:
-        end_page = args.end_page
-
-    if args.hebrew:
-        if args.start_page != RANDOM_PAGE:
-            start_page = start_page[::-1]
-        if args.end_page != RANDOM_PAGE:
-            end_page = end_page[::-1]
-
-    Page.FORBIDDEN_PAGES.extend(args.forbidden_page)
-    search_path_on_wikipedia(start_page, end_page, args.hebrew)
+    search_path_on_wikipedia(args.start_page, args.end_page, args.hebrew, args.max_length, args.no_nav_boxes, args.forbidden_page)
 
 
 if __name__ == "__main__":

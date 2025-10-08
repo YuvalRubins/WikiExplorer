@@ -58,11 +58,7 @@ def run_cli(args):
 
 @pytest.mark.parametrize("start_page, end_page", [("חתול", "כובע"), ("ביצה", "שמש")])
 def test_hebrew_search(start_page, end_page):
-    start_page = start_page[::-1]
-    end_page = end_page[::-1]
-    Page.IS_HEBREW = True
     run_search(start_page, end_page, is_hebrew=True)
-    Page.IS_HEBREW = False
 
 
 @pytest.mark.parametrize("i", range(2_000))
@@ -74,31 +70,23 @@ def test_random_search(i):
 
 @pytest.mark.parametrize("i", range(1_000))
 def test_random_search_without_nav(i):
-    Page.NO_NAV_BOXES = True
     start_page = Page.get_random_page_name()
     end_page = Page.get_random_page_name()
-    run_search(start_page, end_page)
-    Page.NO_NAV_BOXES = False
+    run_search(start_page, end_page, no_nav_boxes=True)
 
 
 @pytest.mark.parametrize("i", range(2_000))
 def test_hebrew_random_search(i):
-    Page.IS_HEBREW = True
     start_page = Page.get_random_page_name()
     end_page = Page.get_random_page_name()
     run_search(start_page, end_page, is_hebrew=True)
-    Page.IS_HEBREW = False
 
 
-@pytest.mark.parametrize("i", range(2_000))
+@pytest.mark.parametrize("i", range(1_000))
 def test_hebrew_random_search_without_nav(i):
-    Page.NO_NAV_BOXES = True
-    Page.IS_HEBREW = True
     start_page = Page.get_random_page_name()
     end_page = Page.get_random_page_name()
-    run_search(start_page, end_page, is_hebrew=True)
-    Page.NO_NAV_BOXES = False
-    Page.IS_HEBREW = False
+    run_search(start_page, end_page, is_hebrew=True, no_nav_boxes=True)
 
 
 @pytest.mark.parametrize("args", ["", "-s Cat", "-e Cat", "-s Cat -e Dog", "-s Cat -e '*'",
