@@ -1,3 +1,4 @@
+import math
 import networkx as nx
 import heapq
 from functools import cached_property
@@ -25,6 +26,7 @@ class WikiExplorer:
         self.search_number = 0
         self.nlp_model = nlp_model
         self.max_path_length = max_path_length
+        self.max_path_length_one_side = float("inf") if self.max_path_length == float("inf") else math.ceil(self.max_path_length / 2)
 
     def get_page_rank(self, page, dest_page):
         """
@@ -46,7 +48,7 @@ class WikiExplorer:
         """
         try:
             path = nx.shortest_path(self.explored_graph, self.start_page, node)
-            return len(path) <= self.max_path_length
+            return len(path) <= self.max_path_length_one_side
         except nx.NetworkXNoPath:
             return False
 
@@ -56,7 +58,7 @@ class WikiExplorer:
         """
         try:
             path = nx.shortest_path(self.explored_graph, node, self.end_page)
-            return len(path) <= self.max_path_length
+            return len(path) <= self.max_path_length_one_side
         except nx.NetworkXNoPath:
             return False
 
@@ -210,7 +212,7 @@ class Page:
                                                        "Wikipedia_talk", "Draft", "Category_talk",
                                                        "שיחה", "מיוחד", "קטגוריה", "קובץ", "ויקיפדיה", "משתמש",
                                                        "שיחת_משתמש", "עזרה", "פורטל", "טיוטה", "משתמשת", "תבנית",
-                                                       "שיחת_תבנית", "שיחת_קטגוריה", "שיחת_ויקיפדיה",
+                                                       "שיחת_תבנית", "שיחת_קטגוריה", "שיחת_ויקיפדיה", "שיחת_טיוטה",
                                                        ])
 
     @staticmethod
