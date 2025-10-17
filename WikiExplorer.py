@@ -44,7 +44,7 @@ class WikiExplorer:
 
     def is_valid_source(self, node):
         """
-        Is the node a valid source, i.e. is it connected to the start
+        Is the node a valid source, i.e. is it connected to the start and not too long
         """
         try:
             path = nx.shortest_path(self.explored_graph, self.start_page, node)
@@ -54,7 +54,7 @@ class WikiExplorer:
 
     def is_valid_target(self, node):
         """
-        Is the node a valid target, i.e. is it connected to the end
+        Is the node a valid target, i.e. is it connected to the end and not too long
         """
         try:
             path = nx.shortest_path(self.explored_graph, node, self.end_page)
@@ -156,11 +156,13 @@ class WikiExplorer:
                         self.explored_graph.remove_edge(path[i], path[i+1])
                         Page(path[i+1]).incoming_pages.discard(path[i])
                         is_valid_path = False
+
                 if is_valid_path:
                     if len(path) <= self.max_path_length:
                         print("Found path" + f" (len={len(path)}): " + Page.get_path_string(path))
                         return path
                     else:
+                        # Path too long - continue searching
                         break
 
         print("No path exists")
@@ -240,6 +242,10 @@ class Page:
 
     @staticmethod
     def get_links_from_html(url):
+        """
+        Return all links from a html page
+        If NO_NAV_BOXES is true, it doesn't return links from navigation boxes
+        """
         headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
