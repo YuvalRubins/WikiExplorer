@@ -103,16 +103,16 @@ def test_random_search_without_nav_sanity(i):
 @pytest.mark.sanity
 @pytest.mark.parametrize("i", range(10))
 def test_hebrew_random_search_sanity(i):
-    start_page = PageManager(is_hebrew=True).get_random_page_name()
-    end_page = PageManager(is_hebrew=True).get_random_page_name()
+    start_page = PageManager(is_hebrew=True).get_random_page_name()[::-1]
+    end_page = PageManager(is_hebrew=True).get_random_page_name()[::-1]
     run_search(start_page, end_page, is_hebrew=True)
 
 
 @pytest.mark.sanity
 @pytest.mark.parametrize("i", range(10))
 def test_hebrew_random_search_without_nav_sanity(i):
-    start_page = PageManager(is_hebrew=True).get_random_page_name()
-    end_page = PageManager(is_hebrew=True).get_random_page_name()
+    start_page = PageManager(is_hebrew=True).get_random_page_name()[::-1]
+    end_page = PageManager(is_hebrew=True).get_random_page_name()[::-1]
     run_search(start_page, end_page, is_hebrew=True, no_nav_boxes=True)
 
 
@@ -132,15 +132,15 @@ def test_random_search_without_nav(i):
 
 @pytest.mark.parametrize("i", range(2_000))
 def test_hebrew_random_search(i):
-    start_page = PageManager(is_hebrew=True).get_random_page_name()
-    end_page = PageManager(is_hebrew=True).get_random_page_name()
+    start_page = PageManager(is_hebrew=True).get_random_page_name()[::-1]
+    end_page = PageManager(is_hebrew=True).get_random_page_name()[::-1]
     run_search(start_page, end_page, is_hebrew=True)
 
 
 @pytest.mark.parametrize("i", range(1_000))
 def test_hebrew_random_search_without_nav(i):
-    start_page = PageManager(is_hebrew=True).get_random_page_name()
-    end_page = PageManager(is_hebrew=True).get_random_page_name()
+    start_page = PageManager(is_hebrew=True).get_random_page_name()[::-1]
+    end_page = PageManager(is_hebrew=True).get_random_page_name()[::-1]
     run_search(start_page, end_page, is_hebrew=True, no_nav_boxes=True)
 
 
@@ -178,6 +178,7 @@ def test_two_forbidden_pages():
 
 @pytest.mark.parametrize("args", ["", "-s Cat", "-e Cat", "-s Cat -e Dog", "-s Cat -e '*'",
                                   "-s '*' -e Cat", "-s '*' -e '*'", "-nn", "-s Cat -e Dog -nn",
+                                  "-he",
                                   "-s Cat -nn",
                                   "-s Cat -nn -ml 4",
                                   "-s Cat -nn -ml 4 -fp United_Kingdom -e Dog",
