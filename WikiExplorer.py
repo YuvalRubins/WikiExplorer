@@ -1,14 +1,11 @@
 import math
 import networkx as nx
 import heapq
-from functools import cached_property
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin, unquote, quote
 import argparse
 import colorama
 
 from NLPModels import NLPModel, EnglishNLPModel, HebrewNLPModel
+from Pages import PageManager, Page
 
 colorama.init(autoreset=True)
 
@@ -19,12 +16,13 @@ class WikiExplorer:
     """
     Wiki explorer for path finding between pages
     """
-    def __init__(self, start_page_name: str, end_page_name: str, nlp_model: NLPModel, max_path_length: float):
+    def __init__(self, start_page_name: str, end_page_name: str, nlp_model: NLPModel, page_manager: PageManager, max_path_length: float):
         self.start_page = start_page_name
         self.end_page = end_page_name
         self.explored_graph = nx.DiGraph()
         self.search_number = 0
         self.nlp_model = nlp_model
+        self.page_manager = page_manager
         self.max_path_length = max_path_length
         self.max_path_length_one_side = float("inf") if self.max_path_length == float("inf") else math.ceil(self.max_path_length / 2)
 
@@ -37,10 +35,10 @@ class WikiExplorer:
         return -self.nlp_model.get_nlp_similarity(page, dest_page)
 
     def get_outgoing_neighbors(self, node):
-        return {page.name for page in Page(node).outgoing_pages}
+        return {page.name for page in self.page_manager.get_page(node).outgoing_pages}
 
     def get_incoming_neighbors(self, node):
-        return {page.name for page in Page(node).incoming_pages}
+        return {page.name for page in self.page_manager.get_page(node).incoming_pages}
 
     def is_valid_source(self, node):
         """
@@ -152,9 +150,9 @@ class WikiExplorer:
                 # Validate path, remove edges that aren't real
                 is_valid_path = True
                 for i in range(len(path)-1):
-                    if Page(path[i+1]) not in Page(path[i]).outgoing_pages:
+                    if self.page_manager.get_page(path[i+1]) not in self.page_manager.get_page(path[i]).outgoing_pages:
                         self.explored_graph.remove_edge(path[i], path[i+1])
-                        Page(path[i+1]).incoming_pages.discard(path[i])
+                        self.page_manager.get_page(path[i+1]).incoming_pages.discard(path[i])
                         is_valid_path = False
 
                 if is_valid_path:
@@ -168,174 +166,24 @@ class WikiExplorer:
         print("No path exists")
 
 
-class NotWikiPage(Exception):
-    pass
-
-
-class Page:
-    HEBREW_URL_PAGE_HEADER = "https://he.wikipedia.org/wiki/"
-    ENGLISH_URL_PAGE_HEADER = "https://en.wikipedia.org/wiki/"
-    NO_NAV_BOXES = False
-    IS_HEBREW = False
-    FORBIDDEN_PAGES = ["Main_Page", "עמוד_ראשי"]
-    _pages = {}
-
-    @staticmethod
-    def get_url_page_header():
-        return Page.HEBREW_URL_PAGE_HEADER if Page.IS_HEBREW else Page.ENGLISH_URL_PAGE_HEADER
-
-    def __new__(cls, name):
-        if name in cls._pages:
-            return cls._pages[name]
-        else:
-            page = super().__new__(cls)
-            cls._pages[name] = page
-            return page
-
-    def __init__(self, name: str):
-        self.name = name
-
-    @staticmethod
-    def name_to_url(name: str) -> str:
-        if Page.IS_HEBREW:
-            name = name[::-1]
-        return Page.get_url_page_header() + quote(name)
-
-    @staticmethod
-    def is_url_of_wiki_page(url: str) -> bool:
-        if not url.startswith(Page.get_url_page_header()):
-            return False
-        name = url[len(Page.get_url_page_header()):]
-        name = unquote(name)
-        return url.startswith(Page.get_url_page_header()) and \
-            all(name != s for s in Page.FORBIDDEN_PAGES) and \
-            all(not name.startswith(s + ":") for s in ["Talk", "Category", "Help", "File", "Wikipedia", "Special",
-                                                       "User", "User_talk", "Template", "Template_talk", "Portal",
-                                                       "Wikipedia_talk", "Draft", "Category_talk",
-                                                       "שיחה", "מיוחד", "קטגוריה", "קובץ", "ויקיפדיה", "משתמש",
-                                                       "שיחת_משתמש", "עזרה", "פורטל", "טיוטה", "משתמשת", "תבנית",
-                                                       "שיחת_תבנית", "שיחת_קטגוריה", "שיחת_ויקיפדיה", "שיחת_טיוטה",
-                                                       ])
-
-    @staticmethod
-    def url_to_name(url: str) -> str:
-        if Page.is_url_of_wiki_page(url):
-            name = url[len(Page.get_url_page_header()):].split('#')[0]
-            name = unquote(name)
-            if Page.IS_HEBREW:
-                name = name[::-1]
-            return name
-        else:
-            raise NotWikiPage(url)
-
-    @staticmethod
-    def get_random_page_name():
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0 Safari/537.36"
-            )
-        }
-        response = requests.get(f"{Page.get_url_page_header()}Special:Random", headers=headers)
-        return Page.url_to_name(response.url)
-
-    @staticmethod
-    def get_links_from_html(url):
-        """
-        Return all links from a html page
-        If NO_NAV_BOXES is true, it doesn't return links from navigation boxes
-        """
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0 Safari/537.36"
-            )
-        }
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, "html.parser")
-        for tag in soup.find_all("footer"):
-            tag.decompose()
-        if Page.NO_NAV_BOXES:
-            for nav_tag in soup.find_all("div", attrs={'role': 'navigation'}) + soup.find_all("figcaption") + soup.find_all("table", attrs={'class': 'infobox'}) + soup.find_all("table", attrs={'class': 'navbox'}) + soup.find_all("div", attrs={'role': 'note'}) + soup.find_all("table", attrs={'class': 'wikitable'}) + soup.find_all("table", attrs={'class': 'sortable'}):
-                nav_tag.decompose()
-        return {urljoin(url, a["href"]) for a in soup.find_all("a", href=True)}
-
-    @staticmethod
-    def get_wikipedia_pages_from_url(url):
-        pages = set()
-        for link in Page.get_links_from_html(url):
-            try:
-                name = Page.url_to_name(link)
-                pages.add(Page(name))
-            except NotWikiPage:
-                continue
-        return pages
-
-    @staticmethod
-    def get_path_string(path):
-        return " -> ".join(path)
-
-    @cached_property
-    def outgoing_pages(self):
-        return self.get_wikipedia_pages_from_url(self.url).difference([self])
-
-    @cached_property
-    def incoming_pages(self):
-        name = self.name[::-1] if self.IS_HEBREW else self.name
-        incoming_pages = self.get_wikipedia_pages_from_url(f"{self.get_url_page_header()}Special:WhatLinksHere/{name}").difference([self])
-        not_incoming_pages = set()
-        # for page in incoming_pages:
-        #     if self not in page.outgoing_pages:
-        #         not_incoming_pages.add(page)
-        return incoming_pages.difference(not_incoming_pages)
-
-    @cached_property
-    def url(self) -> str:
-        return Page.name_to_url(self.name)
-
-    @cached_property
-    def rank(self) -> str:
-        return len(self.outgoing_pages)
-
-    def __str__(self):
-        return self.name
-
-
-def validate_path(path, start_page, end_page):
-    assert path[0] == start_page
-    assert path[-1] == end_page
-    for i in range(len(path)-1):
-        try:
-            assert Page(path[i+1]) in Page(path[i]).outgoing_pages
-        except AssertionError:
-            print(f"{path[i+1]} not in {path[i]}")
-            raise
-
-
 def search_path_on_wikipedia(start_page_name, end_page_name, is_hebrew=False, max_path_length=float("inf"), no_nav_boxes=False, forbidden_pages: list=None):
-    Page.NO_NAV_BOXES = no_nav_boxes
-    Page.IS_HEBREW = is_hebrew
+    page_manager = PageManager(is_hebrew, forbidden_pages, no_nav_boxes)
 
     if is_hebrew:
         start_page_name = start_page_name[::-1]
         end_page_name = end_page_name[::-1]
 
     if start_page_name == RANDOM_PAGE:
-        start_page_name = Page.get_random_page_name()
+        start_page_name = page_manager.get_random_page_name()
     if end_page_name == RANDOM_PAGE:
-        end_page_name = Page.get_random_page_name()
-
-    if forbidden_pages:
-        Page.FORBIDDEN_PAGES.extend(forbidden_pages)
+        end_page_name = page_manager.get_random_page_name()
 
     nlp_model = HebrewNLPModel() if is_hebrew else EnglishNLPModel()
-    wiki_exp = WikiExplorer(start_page_name, end_page_name, nlp_model, max_path_length)
+    wiki_exp = WikiExplorer(start_page_name, end_page_name, nlp_model, page_manager, max_path_length)
     path = wiki_exp.search_path()
     if path:
-        validate_path(path, start_page_name, end_page_name)
-    return path
+        page_manager.validate_path(path, start_page_name, end_page_name)
+    return path, wiki_exp
 
 
 def main():
