@@ -1,7 +1,11 @@
+Flask
+flask-cors
 requests
 beautifulsoup4
 networkx
 spacy
 huggingface_hub[hf_xet]
+pytest
+pytest-split
 transformers
 torch

@@ -2,14 +2,14 @@ import math
 import networkx as nx
 import heapq
 import argparse
-import colorama
 
 from NLPModels import NLPModel, EnglishNLPModel, HebrewNLPModel
 from Pages import PageManager, Page
 
-colorama.init(autoreset=True)
-
 RANDOM_PAGE = '*'
+RESET_COLOR = "\033[0m"
+RED_COLOR = "\033[31m"
+GREEN_COLOR = "\033[32m"
 
 
 class WikiExplorer:
@@ -64,9 +64,9 @@ class WikiExplorer:
         begin_path = nx.shortest_path(self.explored_graph, self.start_page, source)
         end_path = nx.shortest_path(self.explored_graph, target, self.end_page)
         print(f"{self.search_number:3}) " +
-              colorama.Fore.GREEN + Page.get_path_string(begin_path) +
-              colorama.Style.RESET_ALL + "   ===>   " +
-              colorama.Fore.RED + Page.get_path_string(end_path))
+              GREEN_COLOR + Page.get_path_string(begin_path) + RESET_COLOR +
+              "   ===>   " +
+              RED_COLOR + Page.get_path_string(end_path) + RESET_COLOR)
 
     def search_path(self):
         # Item in heap: [rank, node, dest_node that rank refers to]
