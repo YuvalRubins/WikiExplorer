@@ -1,0 +1,21 @@
+name: Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      args:
+        description: "Arguments to pass to WikiExplorer.py"
+        required: true
+        default: ""
+
+jobs:
+  running_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m spacy download en_core_web_lg
+      - run: python WikiExplorer.py ${{ github.event.inputs.args }}
