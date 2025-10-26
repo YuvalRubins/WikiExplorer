@@ -75,7 +75,7 @@ def test_search(start_page, end_page):
 
 @pytest.mark.sanity
 def test_search_no_path():
-    run_search("Moshe_Lion", "1_March_Memorandum", should_be_no_path=True)
+    run_search("4_AM_club", "Xpertdoc", should_be_no_path=True)
 
 
 @pytest.mark.sanity
