@@ -45,10 +45,10 @@ class PageManager:
     def is_url_of_wiki_page(self, url: str) -> bool:
         if not url.startswith(self.url_page_header):
             return False
-        name = url[len(self.url_page_header):]
+        name = url[len(self.url_page_header):].split('#')[0]
         name = unquote(name)
         return url.startswith(self.url_page_header) and \
-            all(name != s for s in self.forbidden_pages) and \
+            name not in self.forbidden_pages and \
             all(not name.startswith(s + ":") for s in PageManager.FORBIDDEN_PREFIXES)
 
     def url_to_name(self, url: str) -> str:
