@@ -7,7 +7,7 @@ Run:
 1) `pip install -r requirements.txt`
 1) `python -m spacy download en_core_web_lg`
 
-For full requirements (for testing, backend, etc.) run instead of first step: `pip install -r full_requirements.txt`
+For full requirements (for testing, backend, etc.) run instead of first step: `pip install -r requirements.txt`
 
 ## Usage:
 
